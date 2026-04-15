@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Rifa PRO</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #0a0a0a;
+    color: white;
+}
+
+.tela { display: none; opacity: 0; transition: 0.5s; }
+.ativa { display: block; opacity: 1; }
+
+input {
+    padding: 10px;
+    margin: 10px;
+    border-radius: 8px;
+    border: none;
+}
+
+button {
+    padding: 10px 20px;
+    background: #00ffcc;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px #00ffcc;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+    margin: 20px;
+}
+
+.numero {
+    padding: 12px;
+    background: #111;
+    border: 1px solid #00ffcc;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: 0.3s;
+}
+
+.numero:hover {
+    transform: scale(1.1);
+    background: #00ffcc;
+    color: black;
+}
+
+.reservado {
+    background: orange;
+    animation: pulse 1s infinite;
+}
+
+.pago {
+    background: #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.click {
+    animation: clickAnim 0.3s;
+}
+
+@keyframes clickAnim {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="tela1" class="tela ativa">
+    <h1> Entrar na Rifa</h1>
+    <input id="nome" placeholder="Seu nome"><br>
+    <input id="tel" placeholder="Telefone"><br>
+    <button onclick="entrar()">Entrar</button>
+</div>
+
+<!-- RIFA -->
+<div id="tela2" class="tela">
+    <h2> Escolha seu número</h2>
+    <div class="grid" id="rifa"></div>
+
+    <p>Pix: lucasferreira201211@gmail.com</p>
+
+    <button onclick="copiarPix()">Copiar Pix</button>
+    <button onclick="abrirADM()">ADM</button>
+</div>
+
+<!-- ADM -->
+<div id="telaADM" class="tela">
+    <h2> Área ADM</h2>
+
+    <div id="lista"></div>
+
+    <button onclick="voltar()">Voltar</button>
+    <button onclick="limparRifa()"> Limpar Rifa</button>
+</div>
+
+<script>
+
+let usuario = {};
+let dados = JSON.parse(localStorage.getItem("rifa")) || {};
+
+// LOGIN
+function entrar() {
+    let nome = document.getElementById("nome").value;
+    let tel = document.getElementById("tel").value;
+
+    if (!nome || !tel) {
+        alert("Preencha tudo!");
+        return;
+    }
+
+    usuario = {nome, tel};
+
+    document.getElementById("tela1").classList.remove("ativa");
+    document.getElementById("tela2").classList.add("ativa");
+
+    carregarRifa();
+}
+
+// RIFA
+function carregarRifa() {
+    let rifa = document.getElementById("rifa");
+    rifa.innerHTML = "";
+
+    for (let i = 1; i <= 500; i++) {
+        let div = document.createElement("div");
+        div.className = "numero";
+        div.innerText = i;
+
+        if (dados[i]) {
+            if (dados[i].status === "reservado") div.classList.add("reservado");
+            if (dados[i].status === "pago") div.classList.add("pago");
+        }
+
+        div.onclick = function() {
+            div.classList.add("click");
+
+            if (dados[i]) {
+                alert("Número já escolhido!");
+                return;
+            }
+
+            dados[i] = {
+                nome: usuario.nome,
+                tel: usuario.tel,
+                status: "reservado"
+            };
+
+            salvar();
+            carregarRifa();
+
+            alert(" Número reservado! Faça o Pix!");
+        }
+
+        rifa.appendChild(div);
+    }
+}
+
+// SALVAR
+function salvar() {
+    localStorage.setItem("rifa", JSON.stringify(dados));
+}
+
+// PIX
+function copiarPix() {
+    navigator.clipboard.writeText("lucasferreira201211@gmail.com");
+    alert(" Pix copiado!");
+}
+
+// ADM
+function abrirADM() {
+    let senha = prompt("Senha ADM:");
+
+    if (senha !== "2026") {
+        alert(" Senha errada!");
+        return;
+    }
+
+    document.getElementById("tela2").classList.remove("ativa");
+    document.getElementById("telaADM").classList.add("ativa");
+
+    carregarADM();
+}
+
+// LISTA ADM
+function carregarADM() {
+    let lista = document.getElementById("lista");
+    lista.innerHTML = "";
+
+    for (let num in dados) {
+        let item = document.createElement("div");
+
+        item.innerHTML = `
+        Nº ${num} - ${dados[num].nome} (${dados[num].tel})
+        - ${dados[num].status}
+        <button onclick="confirmar(${num})"> Pago</button>
+        `;
+
+        lista.appendChild(item);
+    }
+}
+
+// CONFIRMAR PAGAMENTO
+function confirmar(num) {
+    dados[num].status = "pago";
+    salvar();
+    carregarADM();
+}
+
+// LIMPAR RIFA
+function limparRifa() {
+    let confirmar = confirm(" Tem certeza que quer apagar toda a rifa?");
+
+    if (confirmar) {
+        localStorage.removeItem("rifa");
+        dados = {};
+        alert(" Rifa limpa com sucesso!");
+        carregarADM();
+        carregarRifa();
+    }
+}
+
+// VOLTAR
+function voltar() {
+    document.getElementById("telaADM").classList.remove("ativa");
+    document.getElementById("tela2").classList.add("ativa");
+    carregarRifa();
+}
+
+</script>
+
+</body>
+</html>
